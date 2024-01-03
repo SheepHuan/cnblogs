@@ -140,3 +140,55 @@ cmake --install build/
 --------    | ------------ | ----- | -----  |
 NVIDIA Jetson Nano  | Ubuntu 18.04 | 7.5.0 | [releases.linaro.org](https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/)
 地平线 旭日X3       | Ubuntu 20.04 | 9.3.0 | [社区文档](https://developer.horizon.cc/documents_rdk/linux_development/environment_build#%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83)
+
+
+### 3.1 Jestson Nano 交叉编译onnxruntime@v1.14.1
+
+因为从onnxruntime@v1.15.0开始，要求gcc版本不低于9，所以ubuntu18.04的jeston开发板只能编译1.14版本的onnxruntime了。
+
+1. 按照之前的文档，我们下载好gcc 7.5.0的交叉编译工具、准备好protoc 3.20.2版本的可执行文件（这个我是自己编译的，github仓库里它没有这个版本的release）。
+
+2. 准备交叉编译工具链cmake文件。
+
+    ```cmake
+    SET(TOOLCHAIN_PATH /root/tools/toolchains/jetson/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu)
+    SET(CMAKE_SYSTEM_NAME Linux)
+    SET(CMAKE_SYSTEM_VERSION 1)
+    SET(CMAKE_C_COMPILER "${TOOLCHAIN_PATH}/bin/aarch64-linux-gnu-gcc")
+    SET(CMAKE_CXX_COMPILER "${TOOLCHAIN_PATH}/bin/aarch64-linux-gnu-g++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+    SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+    SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+    SET(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+    SET(CMAKE_SYSTEM_PROCESSOR aarch64)
+    ```
+
+3. 进入onnxruntime目录，执行cmake编译命令
+
+    ```bash
+    # 构建
+    cmake -S cmake/ \
+    -B build/ \
+    -Donnxruntime_GCC_STATIC_CPP_RUNTIME=ON \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -Donnxruntime_BUILD_SHARED_LIB=ON \
+    -Dprotobuf_WITH_ZLIB=OFF \
+    -Donnxruntime_DEV_MODE=OFF \
+    -DCMAKE_TOOLCHAIN_FILE=/root/code/onnxruntime@v1.14.1/toolchain.cmake \
+    -DONNX_CUSTOM_PROTOC_EXECUTABLE=/root/code/protobuf@v3.20.2/build/install/bin/protoc
+
+
+
+    # 编译
+    cmake --build build/ --parallel 16
+
+    # 安装
+    cmake --install build/ --prefix build/install
+
+    mv install/ aarch64-ubuntu18.04-gcc7.5.0-onnxruntime@v1.14.1/
+    tar -zcvf aarch64-ubuntu18.04-gcc7.5.0-onnxruntime@v1.14.1.tar.gz aarch64-ubuntu18.04-gcc7.5.0-onnxruntime@v1.14.1/
+    
+    ```
+
+在`build/install`下就是已经安装好的库了。
